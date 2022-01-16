@@ -114,11 +114,11 @@ class LatentSDE(nn.Module):
 
     def __init__(self, data_size, latent_size, context_size, hidden_size):
         super(LatentSDE, self).__init__()
-        # Encoder.
+        # Encoder (finds inital state mean and variance)
         self.encoder = Encoder(input_size=data_size, hidden_size=hidden_size, output_size=context_size)
         self.qz0_net = nn.Linear(context_size, latent_size + latent_size)
 
-        # Decoder.
+        # Decoder (Posterior drift)
         self.f_net = nn.Sequential(
             nn.Linear(latent_size + context_size, hidden_size),
             nn.Softplus(),
@@ -126,6 +126,7 @@ class LatentSDE(nn.Module):
             nn.Softplus(),
             nn.Linear(hidden_size, latent_size),
         )
+        # Prior drift
         self.h_net = nn.Sequential(
             nn.Linear(latent_size, hidden_size),
             nn.Softplus(),
@@ -133,7 +134,7 @@ class LatentSDE(nn.Module):
             nn.Softplus(),
             nn.Linear(hidden_size, latent_size),
         )
-        # This needs to be an element-wise function for the SDE to satisfy diagonal noise.
+        # This needs to be an element-wise function for the SDE to satisfy diagonal noise. (diffusion term)
         self.g_nets = nn.ModuleList(
             [
                 nn.Sequential(
@@ -145,8 +146,11 @@ class LatentSDE(nn.Module):
                 for _ in range(latent_size)
             ]
         )
+        # Decode latent state observation space
         self.projector = nn.Linear(latent_size, data_size)
 
+
+        # Initial  prior mean and log std
         self.pz0_mean = nn.Parameter(torch.zeros(1, latent_size))
         self.pz0_logstd = nn.Parameter(torch.zeros(1, latent_size))
 
@@ -155,6 +159,7 @@ class LatentSDE(nn.Module):
     def contextualize(self, ctx):
         self._ctx = ctx  # A tuple of tensors of sizes (T,), (T, batch_size, d).
 
+    # Posterior drift
     def f(self, t, y):
         ts, ctx = self._ctx
         i = min(torch.searchsorted(ts, t, right=True), len(ts) - 1)

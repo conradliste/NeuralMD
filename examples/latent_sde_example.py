@@ -348,12 +348,11 @@ def main():
         zs, kl = model(ts=ts_ext, batch_size=args.batch_size)
         zs = zs.squeeze()
         zs = zs[1:-1]  # Drop first and last which are only used to penalize out-of-data region and spread uncertainty.
-
-        likelihood_constructor = {"laplace": distributions.Laplace, "normal": distributions.Normal}[args.likelihood]
-        likelihood = likelihood_constructor(loc=zs, scale=args.scale)
-        logpy = likelihood.log_prob(ys).sum(dim=0).mean(dim=0)
-
-        loss = -logpy + kl * kl_scheduler.val
+         nn.Linear(latent_size + context_size, hidden_size),
+            nn.Softplus(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.Softplus(),
+            nn.Linear(hidden_size, latent_size),
         loss.backward()
 
         optimizer.step()
